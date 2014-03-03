@@ -17,17 +17,3 @@ function oxidewt ()
     save(filename);
     
     
-    
-%     SiO2 = 53.80;
-%     TiO2 = 2.00;
-%     Al2O3 = 13.90;
-%     Cr2O3 = 0;
-%     FeO = 9.3;
-%     Fe2O3 = 2.6;
-%     MnO = .20;
-%     MgO = 4.1;
-%     CaO = 7.90;
-%     Na2O = 3;
-%     P2O5 = .4;
-%     K2O = 1.5;
-%     S = 0;

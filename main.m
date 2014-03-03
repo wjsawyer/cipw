@@ -3,15 +3,22 @@
 %oxides in the following order:
 
     
-function norm = cipw(NAME)
+function [oxides, wt] = main(filename)
 %% set up structures, load data
 % filename = input('.mat filename of oxide data: ', 's');
-filename = NAME;
+if filename == 'new'
+    filename = oxidewt();
+end
 oxides = load([filename '.mat']);
 
 %can i just declare an empty struct and add fields as used in the steps
 %below? that would save having the rare elements always show up...
-norm = struct();
+norm = struct('ap', 0, 'pr', 0, 'cm', 0, 'il', 0, 'C', 0, 'ac', 0,...
+                'ns', 0, 'ru', 0, 'or', 0, 'ab', 0, 'an', 0,...
+                'mt', 0, 'hm', 0, 'Q', 0, 'ol', 0, 'pf', 0, 'ne', 0,...
+                'tn', 0, 'dien', 0, 'difs', 0, 'diwo', 0, 'hyen', 0,...
+                'hyfs', 0);
+prov = struct('or', 0, 'ab', 0, 'an', 0, 'tn', 0, 'di', 0, 'wo', 0, 'hy', 0);
 
 % 'or', 0, 'ab', 0, 'an', 0,...
 %                 'diwo', 0, 'dien', 0, 'difs', 0,...
@@ -36,6 +43,7 @@ oxides.S = oxides.S / 32.065;
 %% trace element substitution
 %A:
 oxides.FeO = oxides.FeO + oxides.MnO; 
+oxides.MnO = 0;
 %B:
 %would include if had BaO or SrO;
 
@@ -50,10 +58,10 @@ oxides.CaO = oxides.CaO - (10/3)*oxides.P2O5;
 oxides.P2O5 = 0;
 end
 
-% Step 2: pyrite
+% Step 2: prrite
 %requires FeO > .5*S
 if oxides.S > 0
-norm.py = oxides.S;
+norm.pr = oxides.S;
 oxides.FeO = oxides.FeO - .5*oxides.S;
 oxides.S = 0;
 end
@@ -89,7 +97,7 @@ end
 
 %Step 8: provisional orthoclase
 %requires Al > K2O, Si > K2O
-por = oxides.K2O;
+prov.or = oxides.K2O;
 oxides.Al2O3 = oxides.Al2O3 - oxides.K2O;
 oxides.SiO2 = oxides.SiO2 - 6*oxides.K2O;
 oxides.K2O = 0;
@@ -97,33 +105,33 @@ oxides.K2O = 0;
 % Step 9, 10, 11, and 12: provisional albite, provisional anorthite, acmite
 if oxides.Al2O3 >= oxides.Na2O
     % step 9
-   pab = oxides.Na2O;
+   prov.ab = oxides.Na2O;
    oxides.SiO2 = oxides.SiO2 - 6*oxides.Na2O;
    oxides.Al2O3 = oxides.Al2O3 - oxides.Na2O;
    oxides.Na2O = 0;
    
    %step 10
    if oxides.Al2O3 <= oxides.CaO
-       pan = oxides.Al2O3;
+       prov.an = oxides.Al2O3;
        oxides.SiO2 = oxides.SiO2 - 2*oxides.Al2O3;
        oxides.CaO = oxides.CaO - oxides.Al2O3;
        oxides.Al2O3 = 0;
    else %CaO > Al2
-       pan = oxides.CaO;
+       prov.an = oxides.CaO;
        oxides.SiO2 = oxides.SiO2 - 2*oxides.CaO;
        oxides.Al2O3 = oxides.Al2O3 - oxides.CaO;
        oxides.CaO = 0;
        
-       norm.co = oxides.Al2O3;
+       norm.C = oxides.Al2O3;
        oxides.Al2O3 = 0;
    end
 else %Na2O > Al2O3...
-   pab = oxides.Al2O3;
+   prov.ab = oxides.Al2O3;
    oxides.SiO2 = oxides.SiO2 - 6*oxides.Al2O3;
    oxides.Na2O = oxides.Na2O - oxides.Al2O3;
    oxides.Al2O3 = 0; 
    
-   if oxides.Na20 >= oxides.Fe2O3
+   if oxides.Na2O >= oxides.Fe2O3
        %step 11a
        norm.ac = oxides.Fe2O3;
        oxides.Na2O = oxides.Na2O - oxides.Fe2O3;
@@ -131,7 +139,7 @@ else %Na2O > Al2O3...
        oxides.Fe2O3 = 0; 
        
        %step 12
-       norm.sodiummeta = oxides.Na2O;
+       norm.ns = oxides.Na2O;
        oxides.SiO2 = oxides.SiO2 - oxides.Na2O;
        oxides.Na2O = 0;
    
@@ -148,7 +156,7 @@ end
 % Step 4b...
 if oxides.TiO2 > oxides.FeO 
    if oxides.TiO2 >= oxides.CaO
-       ptn = oxides.CaO;
+       prov.tn = oxides.CaO;
        oxides.TiO2 = oxides.TiO2 - oxides.CaO;
        oxides.SiO2 = oxides.SiO2 - oxides.CaO;
        oxides.CaO = 0;
@@ -157,7 +165,7 @@ if oxides.TiO2 > oxides.FeO
        oxides.TiO2 = 0;
        
    else % CaO > TiO2
-       ptn = oxides.TiO2;
+       prov.tn = oxides.TiO2;
        oxides.SiO2 = oxides.SiO2 - oxides.TiO2;
        oxides.TiO2 = oxides.TiO2 - oxides.TiO2;
        oxides.TiO2 = 0;
@@ -171,37 +179,39 @@ if oxides.Fe2O3  >= oxides.FeO
     oxides.Fe2O3 = oxides.Fe2O3 - oxides.FeO;
     oxides.FeO = 0;
     
-    norm.ht = oxides.Fe2O3;
+    norm.hm = oxides.Fe2O3;
     oxides.Fe2O3 = 0;
     
 else % FeO> Fe2O3
-     norm.mt = oxides.Fe2O3;
+    norm.mt = oxides.Fe2O3;
     oxides.FeO = oxides.FeO - oxides.Fe2O3;
     oxides.Fe2O3 = 0;
 end
 
-% Step 14: pyroxenes and olivines
+% Step 14: prroxenes and olivines
 oxides.MF = oxides.MgO + oxides.FeO;
 percentMg = oxides.MgO / oxides.MF;
+oxides.MgO = 0;
+oxides.FeO = 0;
 
 %step 15, 16, and 17: CaO and MF
 if oxides.CaO >= oxides.MF
-    pdi = oxides.MF;
+    prov.di = oxides.MF;
     oxides.CaO = oxides.CaO - oxides.MF;
     oxides.SiO2 = oxides.SiO2 - 2*oxides.MF;
     oxides.MF = 0;
     
-    pwo = oxides.CaO;
+    prov.wo = oxides.CaO;
     oxides.SiO2 = oxides.SiO2 - oxides.CaO;
     oxides.CaO = 0;
     
 else % MF > CaO
-    pdi = oxides.CaO;
+    prov.di = oxides.CaO;
     oxides.MF = oxides.MF - oxides.CaO;
     oxides.SiO2 = oxides.SiO2 - 2*oxides.CaO;
     oxides.CaO = 0;
     
-    phy = oxides.MF;
+    prov.hy = oxides.MF;
     oxides.SiO2 = oxides.SiO2 - oxides.MF;
     oxides.MF = 0;
 end
@@ -219,28 +229,30 @@ else %oxides.SiO2 < 0
 
 % Step 20:
 if D >0
-if D >= phy / 2
-    norm.ol = phy;
-    phy = 0;
-    D1 = D - (phy / 2);
-else %phy/2 >D
+if D >= prov.hy / 2
+    norm.ol = prov.hy;
+    prov.hy = 0;
+    D1 = D - (prov.hy / 2);
+else %prov.hy/2 >D
    norm.ol = D;
-   phy = phy - 2*D;
+   prov.hy = prov.hy - 2*D;
    D = 0;
+   oxides.SiO2 = -D;
 end
 end
 
 % Step 21:
 if (exist('D1','var') == 1)
-    if (exist('ptn','var') == 1)
-        if ptn > D
+    if (exist('prov.tn','var') == 1)
+        if prov.tn > D
         norm.pf = D1;
-        ptn = ptn - D1;
+        prov.tn = prov.tn - D1;
         D1 = 0;
+        oxides.SiO2 = -D1;
         else % D > pth
-        norm.pf = ptn;
-        D2 = D1 - ptn;
-        ptn = 0;
+        norm.pf = prov.tn;
+        D2 = D1 - prov.tn;
+        prov.tn = 0;
         end
     else % no prov sphene ( pth )
         D2 = D1;
@@ -249,17 +261,19 @@ end
 
 % Step 22:
 if (exist('D2','var') == 1)
-    if 4*pab > D2
+    if 4*prov.ab > D2
     norm.ne = D2/4;
-    pab = pab - D2/4;
-    else %D2 > 4*pab
-    norm.ne = pab;
-    D3 = D2 - 4*pab;
-    pab = 0;
+    prov.ab = prov.ab - D2/4;
+    D2 = 0;
+    oxides.SiO2 = -D2;
+    else %D2 > 4*prov.ab
+    norm.ne = prov.ab;
+    D3 = D2 - 4*prov.ab;
+    prov.ab = 0;
     end
 end
 
-%steps 23+?
+%steps 23 
 end
 
 
@@ -267,61 +281,84 @@ end
 %% final step - move provisional minerals to norm struct
 %always exists:
 
-norm.or = por;
-por = 0;
+norm.or = prov.or;
+prov.or = 0;
 
-norm.ab = pab;
-pab = 0;
+norm.ab = prov.ab;
+prov.ab = 0;
 
-norm.dien = pdi*percentMg;
-norm.difs = pdi*(1-percentMg);
-norm.diwo = pdi;
-pdi = 0;
+norm.dien = prov.di*percentMg;
+norm.difs = prov.di*(1-percentMg);
+norm.diwo = prov.di;
+prov.di = 0;
 
-if (exist('ptn','var') == 1)
-norm.tn = ptn;
-ptn = 0;
-end
+norm.tn = prov.tn;
+prov.tn = 0;
 
-if (exist('pan','var') == 1)
-norm.an = pan;
-pan = 0;
-end
+norm.an = prov.an;
+prov.an = 0;
 
-if (exist('pwo','var') == 1)
-norm.diwo = norm.diwo + pwo;
-pwo = 0;
-end
+norm.diwo = norm.diwo + prov.wo;
+prov.wo = 0;
+
+norm.hyen = prov.hy*percentMg;
+norm.hyfs = prov.hy*(1-percentMg);
+prov.hy = 0;
 
 
-if (exist('phy','var') == 1)
-norm.hyen = phy*percentMg;
-norm.hyfs = phy*(1-percentMg);
-phy = 0;
-end
-
-% 
-% %% convert norms to wt %
-% wt.ap = norm.ap*336;
-% wt.il = norm.il*152;
-% wt.or = norm.or*557;
-% wt.ab = norm.ab*524;
-% wt.an = norm.an*278;
-% wt.mt = norm.mt*232;
-% wt.diwo = norm.diwo*116;
-% wt.dien = norm.dien*100;
-% wt.difs = norm.difs*132;
-% wt.hyen = norm.hyen*100;
-% wt.hyfs = norm.hyfs*132;
-% wt.Q = norm.Q*60.1;
-% 
-% 
-% 
-% 
-% 
-% 
 
 
+%% convert norms to wt %
+wt.ap = norm.ap*336;            %apatite
+wt.pr = norm.pr*119.98;         %prrite
+wt.cm = norm.cm*223.83;         %chromite
+wt.il = norm.il*152;            %ilmenite
+wt.C = norm.C*101.96;           %corundum
+wt.ac = norm.ac*231;            %acmite/aegirine
+wt.ns = norm.ns*122.06;         %sodium metasilicate
+wt.ru = norm.ru*79.866;         %rutile
+wt.or = norm.or*557;            %orthoclase
+wt.ab = norm.ab*524;            %albite
+wt.an = norm.an*278;            %anorthite
+wt.mt = norm.mt*232;            %magnetite
+wt.hm = norm.hm*159.69;         %hematite
+wt.Q = norm.Q*60.1;             %quartz
+wt.ol = norm.ol*153.31;         %olivine
+wt.pf = norm.pf*135.96;         %perovskite
+wt.ne = norm.ne*146.08;         %nepheline
+wt.tn = norm.tn*197.76;         %titanite/sphene
+wt.dien = norm.dien*100;        %diopside enstatite
+wt.difs = norm.difs*132;        %diopside forsterite
+wt.diwo = norm.diwo*116;        %diopside wollastonite
+wt.hyen = norm.hyen*100;        %hypersthene enstatite
+wt.hyfs = norm.hyfs*132;        %hypersthene forsterite
+
+
+
+
+
+
+
+
+function filename = oxidewt ()
+
+    SiO2 = input('SiO2: ');
+    TiO2 = input('TiO2: ');
+    Al2O3 = input('Al2O3: ');
+    Cr2O3 = input('Cr2O3: ');
+    FeO = input('FeO: ');
+    Fe2O3 = input('Fe2O3: ');
+    MnO = input('MnO: ');
+    MgO = input('MgO: ');
+    CaO = input('CaO: ');
+    Na2O = input('Na2O: ');
+    P2O5 = input('P2O5: ');
+    K2O = input('K20: ');
+    S = input('S: ');
+    filename = input('filename: ', 's');
+    save(filename);
+    
+    
 
 
 
